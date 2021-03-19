@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>最短的webgl demo</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #canvas {
+      background-color: antiquewhite;
+    }
+  </style>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script>
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const gl = canvas.getContext('webgl')
+    // 声明颜色 rgba 每个值的取值范围为 [0, 1]
+    gl.clearColor(0, 0, 0, 1)
+    // 刷底色
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    const rgbaCss = 'rgba(255, 100, 0, 1)'
+    const reg = RegExp(/\((.*)\)/)
+    const rebaStr = reg.exec(rgbaCss)[1]
+    const rgbaList = rebaStr.split(',').map((item, index) => {
+      const value = index === 3 ? parseInt(item) : parseInt(item) / 255
+      
+      return value
+    })
+
+    gl.clearColor(...rgbaList)
+    // 刷底色
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+  </script>
+</body>
+</html>

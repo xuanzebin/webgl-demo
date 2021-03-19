@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图形转面</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id='vertexShader' type='x-shader/x-vertex'>
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+      gl_PointSize = 10.0;
+    }
+  </script>
+  <script id='fragmentShader' type='x-shader/x-fragment'>
+    void main() {
+      gl_FragColor = vec4(1, 1, 0, 1);
+    }
+  </script>
+  <script type='module'>
+    import { initShader, scaleLinear } from '../jsm/utils.js'
+    import ShapeGeo from '../jsm/shapeGeo.js'
+    import Poly from './poly.js'
+
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    initShader(gl, vsSource, fsSource)
+
+    //路径G-逆时针
+    const pathData = [
+      0, 0,
+      0, 600,
+      600, 600,
+      600, 200,
+      200, 200,
+      200, 400,
+      300, 400,
+      300, 300,
+      500, 300,
+      500, 500,
+      100, 500,
+      100, 100,
+      600, 100,
+      600, 0,
+    ]
+
+    // 宽高比，由于webgl坐标系的特殊性，因此正方形实际的宽高在webgl坐标系中不一样
+    const ratio = canvas.width / canvas.height
+    // 正方形高度
+    const rectH = 1.0
+    // 正方形宽度
+    const rectW = rectH / ratio
+    // 正方形宽高的一半
+    const [halfRectW, halfRectH] = [rectW / 2, rectH / 2]
+    // 两个极点
+    const minX = -halfRectW
+    const minY = -halfRectH
+    const maxX = halfRectW
+    const maxY = halfRectH
+
+    const poly = new Poly({
+      gl,
+      vertices: [
+        minX, maxY,
+        minX, minY,
+        maxX, minY,
+        maxX, maxY
+      ]
+    })
+
+    gl.clearColor(0, 0, 0, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    poly.draw()
+
+    const glData = []
+    const scaleX = scaleLinear(0, minX, 600, maxX)
+    const scaleY = scaleLinear(0, maxY, 600, minY)
+
+    for (let i = 0; i < pathData.length; i +=2) {
+      const x = scaleX(pathData[i])
+      const y = scaleY(pathData[i + 1])
+
+      glData.push(x, y)
+    }
+
+    const path = new Poly({
+      gl,
+      vertices: glData,
+      types: ['POINTS', 'LINE_LOOP']
+    })
+
+    path.draw()
+
+    const shapeGeo = new ShapeGeo(glData)
+    const face = new Poly({
+      gl,
+      vertices: shapeGeo.vertices,
+      types: ['TRIANGLES']
+    })
+
+    face.draw()
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼠标绘制多边形</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id='vertexShader' type='x-shader/x-vertex'>
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+      gl_PointSize = 20.0;
+    }
+  </script>
+  <script id='fragmentShader' type='x-shader/x-fragment'>
+    void main() {
+      gl_FragColor = vec4(1, 1, 0, 1);
+    }
+  </script>
+  <script type='module'>
+    import { initShader, getMousePosInWebgl } from './utils.js'
+    import Sky from './sky.js'
+    import Poly from './poly.js'
+
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    gl.clearColor(0, 0, 0, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    initShader(gl, vsSource, fsSource)
+
+    const sky = new Sky(gl)
+
+    let poly = null
+
+    canvas.oncontextmenu = function () { return false }
+
+    canvas.addEventListener('mousedown', e => {
+      if (event.button === 2) {
+        if (!poly) return
+
+        popVertice()
+        render()
+        return
+      }
+
+      const { x, y } = getMousePosInWebgl(e, canvas)
+
+      if (poly) {
+        poly.addVertices(x, y)
+      } else {
+        createPoly(x, y)
+      }
+
+      render()
+    })
+
+    canvas.addEventListener('mousemove', e => {
+      if (!poly) return
+
+      const { x, y } = getMousePosInWebgl(e, canvas)
+
+      poly.setVertice(poly.count - 1, x, y)
+      render()
+    })
+
+    function popVertice () {
+      poly.popVertice()
+      poly = null
+    }
+
+    function createPoly (x, y) {
+      poly = new Poly({
+        gl,
+        vertices: [x, y, x, y],
+        types: ['POINTS', 'LINE_STRIP']
+      })
+
+      sky.add(poly)
+    }
+
+    function render () {
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      sky.draw()
+    }
+  </script>
+</body>
+</html>

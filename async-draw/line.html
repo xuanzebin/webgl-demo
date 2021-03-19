@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼠标绘制连线</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id='vertexShader' type='x-shader/x-vertex'>
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+      gl_PointSize = 20.0;
+    }
+  </script>
+  <script id='fragmentShader' type='x-shader/x-fragment'>
+    precision mediump float;
+    void main() {
+      float dist = distance(gl_PointCoord, vec2(0.5, 0.5));
+      if (dist < 0.5) {
+        gl_FragColor = vec4(1, 1, 0, 1);
+      } else {
+        discard;
+      }
+    }
+  </script>
+  <script type='module'>
+    import { initShader, getMousePosInWebgl } from './utils.js'
+    import Poly from './poly.js'
+
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    gl.clearColor(0, 0, 0, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    initShader(gl, vsSource, fsSource)
+
+    const poly = new Poly({
+      gl,
+      types: ['POINTS', 'LINE_STRIP']
+    })
+
+    canvas.addEventListener('mousedown', e => {
+      const { x, y } = getMousePosInWebgl(e, canvas)
+
+      poly.addVertices(x, y)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      poly.draw()
+    })
+  </script>
+</body>
+</html>

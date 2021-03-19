@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>使用poly来异步绘图</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id='vertexShader' type='x-shader/x-vertex'>
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+      gl_PointSize = 20.0;
+    }
+  </script>
+  <script id='fragmentShader' type='x-shader/x-fragment'>
+    void main() {
+      gl_FragColor = vec4(1, 1, 0, 1);
+    }
+  </script>
+  <script type='module'>
+    import { initShader } from './utils.js'
+    import Poly from './poly.js'
+
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    initShader(gl, vsSource, fsSource)
+
+    const poly = new Poly({
+      gl,
+      vertices: [0, 0.2]
+    })
+
+    gl.clearColor(0, 0, 0, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    poly.draw()
+
+    setTimeout(() => {
+      poly.addVertices(-0.2, -0.1)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      poly.draw()
+    }, 1000)
+
+    setTimeout(() => {
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      poly.draw(['POINTS', 'LINE_STRIP'])
+    }, 2000)
+  </script>
+</body>
+</html>
