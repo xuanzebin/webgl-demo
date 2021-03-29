@@ -4,22 +4,19 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>旋转</title>
+  <title>矩阵旋转</title>
 </head>
 <body>
   <canvas id='canvas'></canvas>
   <script id='vertexShader' type='x-shader/x-vertex'>
     attribute vec4 a_Position;
-    // 角度变成弧度
-    uniform float u_Angle;
-    float angle = radians(u_Angle);
+    float angle = radians(10.0);
     float sinB = sin(angle);
     float cosB = cos(angle);
+    // 列主序 
+    uniform mat4 u_Matrix;
     void main() {
-      gl_Position.x = a_Position.x * cosB - a_Position.y * sinB;
-      gl_Position.y = a_Position.y * cosB + a_Position.x * sinB;
-      gl_Position.z = a_Position.z;
-      gl_Position.w = 1.0;
+      gl_Position = u_Matrix * a_Position;
     }
   </script>
   <script id='fragmentShader' type='x-shader/x-fragment'>
@@ -56,17 +53,25 @@
     gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0)
     // 赋能 - 批处理
     gl.enableVertexAttribArray(a_Position)
-    const u_Angle = gl.getUniformLocation(gl.program, 'u_Angle')
+    const u_Matrix = gl.getUniformLocation(gl.program, 'u_Matrix')
 
     gl.clearColor(0, 0, 0, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3)
-
     let angle = 0
     !(function ani() {
-      angle++
-      gl.uniform1f(u_Angle, angle)
+      angle+=0.01
+
+      const sinB = Math.sin(angle)
+      const cosB = Math.cos(angle)
+      const matrix = [
+        cosB,  sinB, 0,   0,
+        -sinB, cosB, 0,   0,
+        0,     0,    1.0, 0,
+        0,     0,    0,   1.0
+      ]
+
+      gl.uniformMatrix4fv(u_Matrix, false, matrix)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
       requestAnimationFrame(ani)
