@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>矩阵库</title>
+  <title>综合变换</title>
 </head>
 <body>
   <canvas id='canvas'></canvas>
@@ -26,10 +26,10 @@
   </script>
   <script type='module' >
     import { initShader } from '../jsm/utils.js'
-    import { Matrix4 } from 'https://unpkg.com/three/build/three.module.js'
+    import { Matrix4, Vector3, Quaternion } from 'https://unpkg.com/three/build/three.module.js'
     const canvas = document.querySelector('#canvas')
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+    canvas.width = 500
+    canvas.height = 500
     const vsSource = document.getElementById('vertexShader').innerText
     const fsSource = document.getElementById('fragmentShader').innerText
     const gl = canvas.getContext('webgl')
@@ -59,15 +59,30 @@
     gl.clearColor(0, 0, 0, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
 
-    const m4 = new Matrix4()
+    const matrix = new Matrix4()
+    // 位移
+    const pos = new Vector3(0, 0, 0)
+    // 旋转，用四元数存储旋转数据
+    // const rot = new Quaternion()
+    // rot.setFromAxisAngle(new Vector3(1, 0, 0), Math.PI / 4)
+    // 缩放
+    const scale = new Vector3(1, 1, 1)
+
+    gl.uniformMatrix4fv(u_Matrix, false, matrix.elements)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
 
     let angle = 0
     !(function ani() {
-      angle+=0.01
-      m4.makeRotationX(angle)
-      gl.uniformMatrix4fv(u_Matrix, false, m4.elements)
+      angle += 0.1
+      const rot = new Quaternion()
+      rot.setFromAxisAngle(new Vector3(1, 0, 0), angle)
+      // 先缩放，再旋转，最后位移
+      matrix.compose(pos, rot, scale)
+      gl.uniformMatrix4fv(u_Matrix, false, matrix.elements)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
+
       requestAnimationFrame(ani)
     })()
   </script>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>矩阵库</title>
+  <title>复合变换</title>
 </head>
 <body>
   <canvas id='canvas'></canvas>
@@ -59,17 +59,20 @@
     gl.clearColor(0, 0, 0, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
 
-    const m4 = new Matrix4()
 
-    let angle = 0
-    !(function ani() {
-      angle+=0.01
-      m4.makeRotationX(angle)
-      gl.uniformMatrix4fv(u_Matrix, false, m4.elements)
-      gl.clear(gl.COLOR_BUFFER_BIT)
-      gl.drawArrays(gl.TRIANGLES, 0, 3)
-      requestAnimationFrame(ani)
-    })()
+    const [bx, by] = [0.1, 0.2]
+    const [cx, cy] = [0.3, 0.4]
+    
+    const mr = new Matrix4()
+    mr.makeRotationZ(Math.PI)
+    const mt = new Matrix4()
+    mt.makeTranslation(0.3, 0, 0)
+
+    const matrix = mr.multiply(mt)
+
+    gl.uniformMatrix4fv(u_Matrix, false, matrix.elements)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
   </script>
 </body>
 </html>
