@@ -82,7 +82,7 @@
         gl.vertexAttrib2f(a_Position, x, y)
         gl.vertexAttrib1f(a_PointSize, size)
         gl.uniform4fv(u_FragColor, color)
-        gl.drawArrays(gl.POINTS, 0, 1)
+        gl.drawArrays(gl.POINTS, 0, a_points.length)
       })
     }
     render()

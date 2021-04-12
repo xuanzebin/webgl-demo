@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一波春水</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id='vertexShader' type='x-shader/x-vertex'>
+    attribute vec4 a_Position;
+    // 视图矩阵
+    uniform mat4 u_ViewMatrix;
+    void main() {
+      // gl_Position = a_Position;
+      gl_Position =  u_ViewMatrix * a_Position;
+      gl_PointSize = 3.0;
+    }
+  </script>
+  <script id='fragmentShader' type='x-shader/x-fragment'>
+    void main() {
+      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+  </script>
+  <script type='module' >
+    import Poly from '../jsm/poly.js'
+    import { initShader, scaleLinear } from '../jsm/utils.js'
+    import { Matrix4, Matrix3, Vector3, Quaternion } from 'https://unpkg.com/three/build/three.module.js'
+
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+  
+    initShader(gl, vsSource, fsSource)
+    gl.clearColor(0, 0, 0, 1)
+
+    const viewMatrix = new Matrix4().lookAt(
+      new Vector3(0.2, 0.3, 0.5),
+      new Vector3(),
+      new Vector3(0, 1, 0)
+    )
+
+    // x,z方向的空间坐标极值
+    const [minPosX, maxPosX, minPosZ, maxPosZ] = [-0.7, 0.8, -1, 1]
+
+    // x, z方向的弧度极值
+    const [minAngX, maxAngX, minAngZ, maxAngZ] = [0,  Math.PI * 4, 0, Math.PI * 2]
+    const scalerX = scaleLinear(minPosX, minAngX, maxPosX, maxAngX)
+    const scalerZ = scaleLinear(minPosZ, minAngZ, maxPosZ, maxAngZ)
+
+    // 波浪对象
+    const wave = new Poly({
+      gl,
+      size: 3,
+      vertices: createVertices(),
+      uniforms: {
+        u_ViewMatrix: {
+          type: 'uniformMatrix4fv',
+          value: viewMatrix.elements
+        }
+      }
+    })
+
+    let offset = 0
+    !(function ani() {
+      offset += 0.08
+      updateVertices(offset)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      wave.draw()
+      requestAnimationFrame(ani)
+    }())
+
+    function createVertices () {
+      const vertices = []
+      for (let z = minPosZ; z < maxPosZ; z += 0.04) {
+        for (let x = minPosX; x < maxPosX; x += 0.03) {
+          vertices.push(x, 0, z)
+        }
+      }
+
+      return vertices
+    }
+
+    function updateVertices (offset) {
+      const { vertices } = wave
+      for (let i = 0; i < vertices.length; i+=3) {
+        const [posX, posZ] = [vertices[i], vertices[i + 2]]
+        const angZ = scalerZ(posZ)
+        const Omega = 2
+        const phi = scalerX(posX) + offset
+        const a = Math.sin(angZ) * 0.1 + 0.03
+        vertices[i + 1] = sinFn(a, Omega, phi)(angZ)
+      }
+
+      wave.updateBuffer()
+    }
+
+    // 建立正弦型函数
+    function sinFn (a, Omega, phi) {
+      return function (x) {
+        return a * Math.sin(Omega * x + phi)
+      }
+    }
+  </script>
+</body>
+</html>
