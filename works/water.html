@@ -39,10 +39,11 @@
     gl.clearColor(0, 0, 0, 1)
 
     const viewMatrix = new Matrix4().lookAt(
-      new Vector3(0.2, 0.3, 0.5),
-      new Vector3(),
-      new Vector3(0, 1, 0)
+      new Vector3(1, 0, 0),
+      new Vector3(0, 0, 0),
+      new Vector3(0, 0, 1)
     )
+    console.log(viewMatrix.elements)
 
     // x,z方向的空间坐标极值
     const [minPosX, maxPosX, minPosZ, maxPosZ] = [-0.7, 0.8, -1, 1]

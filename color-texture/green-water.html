@@ -8,7 +8,7 @@
 </head>
 <body>
   <canvas id='canvas'></canvas>
-  <script id='vertexShader' type='x-shader/x-vertex'>
+  <script id="vertexShader" type="x-shader/x-vertex">
     attribute vec4 a_Position;
     attribute vec4 a_Color;
     varying vec4 v_Color;
@@ -19,7 +19,7 @@
       v_Color = a_Color;
     }
   </script>
-  <script id='fragmentShader' type='x-shader/x-fragment'>
+  <script id="fragmentShader" type="x-shader/x-fragment">
     precision mediump float;
     varying vec4 v_Color;
     void main() {
@@ -39,6 +39,8 @@
   
     initShader(gl, vsSource, fsSource)
     gl.clearColor(0, 0, 0, 1)
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
 
     const viewMatrix = new Matrix4().lookAt(
       new Vector3(0.2, 0.3, 1),
@@ -60,7 +62,7 @@
     const [minY, maxY] = [-a12, a12]
 
     // 色相极值
-    const [minH, maxH] = [0.1, 0.55]
+    const [minH, maxH] = [0.1, 0.95]
 
     // 比例尺，将y坐标和色相相映射
     const scalerC = scaleLinear(minY, minH, maxY, maxH)
@@ -73,13 +75,18 @@
     const a_Position = { size: 3, index: 0 }
     const a_Color = { size: 4, index: 3 }
 
+    const categorySize = a_Position.size + a_Color.size
+    const getInd = GetIndexInGrid(cols, categorySize)
+
+    const { vertices, indexes } = crtBaseData(
+      cols, rows,
+      minPosX, maxPosX, minPosZ, maxPosZ
+    )
+
     // 波浪对象
     const wave = new Poly({
       gl,
-      source: getSource(
-        cols, rows,
-        minPosX, maxPosX, minPosZ, maxPosZ
-      ),
+      source: getSource(vertices, indexes, categorySize),
       uniforms: {
         u_ViewMatrix: {
           type: 'uniformMatrix4fv',
@@ -105,22 +112,47 @@
 
     function render () {
       gl.clear(gl.COLOR_BUFFER_BIT)
-      wave.draw()
+      // wave.draw()
+      wave.draw('LINES')
+      wave.draw('TRIANGLES')
     }
 
-    function getSource (cols, rows, minPosX, maxPosX, minPosZ, maxPosZ) {
-      const source = []
+    function getSource (vertices, indexes, categorySize) {
+      const arr = []
+
+      indexes.forEach(i => {
+        arr.push(...vertices.slice(i, i + categorySize))
+      })
+
+      return arr
+    }
+
+    function crtBaseData (cols, rows, minPosX, maxPosX, minPosZ, maxPosZ) {
+      const vertices = []
+      const indexes = []
       const spaceZ = (maxPosZ - minPosZ) / rows
       const spaceX = (maxPosX - minPosX) / cols
       for (let z = 0; z < rows; z++) {
         for (let x = 0; x < cols; x++) {
           const px = x * spaceX + minPosX
           const pz = z * spaceZ + minPosZ
-          source.push(px, 0, pz, 1, 1, 1, 1)
+          vertices.push(px, 0, pz, 1, 1, 1, 1)
+
+          if (x && z) {
+            const [x0, z0] = [x - 1, z - 1]
+            indexes.push(
+              getInd(x0, z0),
+              getInd(x, z0),
+              getInd(x, z),
+              getInd(x0, z0),
+              getInd(x, z),
+              getInd(x0, z)
+            )
+          }
         }
       }
 
-      return source
+      return { vertices, indexes }
     }
 
     function updateVertices (offset) {
@@ -146,6 +178,13 @@
     function sinFn (a, Omega, phi) {
       return function (x) {
         return a * Math.sin(Omega * x + phi)
+      }
+    }
+
+    // 获取索引位置的方法
+    function GetIndexInGrid (w, size) {
+      return function (x, y) {
+        return (y * w + x) * size
       }
     }
   </script>
