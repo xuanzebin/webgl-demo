@@ -69,3 +69,11 @@ export const scaleLinear = (ax, ay, bx, by) => {
     return k * x + b
   }
 }
+
+export const imgPromise = img => {
+  return new Promise(resolve => {
+    img.onload = function () {
+      resolve()
+    }
+  })
+}

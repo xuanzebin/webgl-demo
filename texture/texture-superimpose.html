@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片叠加</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    attribute vec2 a_Pin;
+    varying vec2 v_Pin;
+    void main() {
+      gl_Position = a_Position;
+      v_Pin = a_Pin;
+    }
+  </script>
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform sampler2D u_Sampler;
+    uniform sampler2D u_Pattern;
+    varying vec2 v_Pin;
+    void main() {
+      vec4 p = texture2D(u_Sampler, v_Pin);
+      vec4 o = texture2D(u_Pattern, v_Pin);
+      gl_FragColor = p * o;
+    }
+  </script>
+  <script type='module' >
+    import Poly from './poly.js'
+    import { initShader, imgPromise } from '../jsm/utils.js'
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+  
+    initShader(gl, vsSource, fsSource)
+
+    // 数据源（位置数据 + 颜色数据）
+    const source = new Float32Array([
+      -0.4, 0.8,   0, 1,
+      -0.4, -0.8,  0, 0,
+      0.4, 0.8,    1, 1,
+      0.4, -0.8,   1, 0,
+    ])
+    const rect = new Poly({
+      gl,
+      source,
+      type: 'TRIANGLE_STRIP',
+      attributes: {
+        a_Position: {
+          size: 2,
+          index: 0
+        },
+        a_Pin: {
+          size: 2,
+          index: 2
+        }
+      }
+    })
+
+    const originImage = new Image()
+    originImage.src = './dress.jpg'
+  
+    const patternImage = new Image()
+    patternImage.src = './pattern1.jpg'
+
+    Promise.all([
+      imgPromise(originImage),
+      imgPromise(patternImage),
+    ]).then(() => {
+      rect.maps = {
+        u_Sampler: { image: originImage },
+        u_Pattern: { image: patternImage }
+      }
+      rect.updateMaps()
+      render()
+    })
+
+    function render() {
+      gl.clearColor(0, 0, 0, 1.0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      rect.draw()
+    }
+  </script>
+</body>
+</html>
