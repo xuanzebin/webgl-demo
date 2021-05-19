@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>花样转场</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    attribute vec2 a_Pin;
+    varying vec2 v_Pin;
+    void main() {
+      gl_Position = a_Position;
+      v_Pin = a_Pin;
+    }
+  </script>
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform sampler2D u_Sampler;
+    uniform sampler2D u_Pattern;
+    uniform sampler2D u_Gradient;
+    uniform float u_Ratio;
+    varying vec2 v_Pin;
+    void main() {
+      vec4 o = texture2D(u_Sampler, v_Pin);
+      vec4 p = texture2D(u_Pattern, v_Pin);
+      vec4 g = texture2D(u_Gradient, v_Pin);
+      float f = clamp((g.r + u_Ratio), 0.0, 1.0);
+      gl_FragColor = mix(o, p, f);
+    }
+  </script>
+  <script type='module' >
+    import Poly from './poly.js'
+    import Track from '../jsm/track.js'
+    import { initShader, imgPromise } from '../jsm/utils.js'
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+  
+    initShader(gl, vsSource, fsSource)
+    gl.clearColor(0.0, 0.0, 0.0, 1.0)
+
+    let n = 0
+    let track = null
+    const length = 5
+    const obj = { ratio: 0 }
+
+    // 数据源（位置数据 + 颜色数据）
+    const source = new Float32Array([
+      -0.4, 0.8,   0, 1,
+      -0.4, -0.8,  0, 0,
+      0.4, 0.8,    1, 1,
+      0.4, -0.8,   1, 0,
+    ])
+    const rect = new Poly({
+      gl,
+      source,
+      type: 'TRIANGLE_STRIP',
+      uniforms: {
+        u_Ratio: {
+          type: 'uniform1f',
+          value: obj.ratio
+        }
+      },
+      attributes: {
+        a_Position: {
+          size: 2,
+          index: 0
+        },
+        a_Pin: {
+          size: 2,
+          index: 2
+        }
+      }
+    })
+
+    loadImage()
+
+    function loadImage () {
+      n++
+      const i1 = n % length
+      const i2 = (n + 1) % length
+
+      const originImage = new Image()
+      originImage.src = `./pattern${i1}.jpg`
+      const patternImage = new Image()
+      patternImage.src = `./pattern${i2}.jpg`
+      const gradientImage = new Image()
+      gradientImage.src = `./mask${i2}.jpg`
+
+      Promise.all([
+        imgPromise(originImage),
+        imgPromise(patternImage),
+        imgPromise(gradientImage)
+      ]).then(() => {
+        changeImage(originImage, patternImage, gradientImage)
+        ani()
+      })
+    }
+
+    function changeImage (...img) {
+      obj.ratio = 0
+
+      rect.maps = {
+        u_Sampler: { image: img[0] },
+        u_Pattern: { image: img[1] },
+        u_Gradient: { image: img[2] }
+      }
+      rect.updateMaps()
+
+      track = new Track(obj)
+      track.start = new Date()
+      track.timeLen = 1500
+      track.onEnd = loadImage
+      track.keyMap = new Map([
+        [
+          'ratio',
+          [
+            [0, 0],
+            [700, 1]
+          ]
+        ]
+      ])
+    }
+
+    /* 动画 */
+    function ani() {
+      track.update(new Date())
+      rect.uniforms.u_Ratio.value = obj.ratio;
+      rect.updateUniform()
+      render()
+      requestAnimationFrame(ani)
+    }
+
+    //渲染
+    function render() {
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      rect.draw()
+    }
+  </script>
+</body>
+</html>

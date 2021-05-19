@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>换装达人</title>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    attribute vec2 a_Pin;
+    varying vec2 v_Pin;
+    void main() {
+      gl_Position = a_Position;
+      v_Pin = a_Pin;
+    }
+  </script>
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform sampler2D u_Sampler;
+    uniform sampler2D u_Pattern1;
+    uniform sampler2D u_Pattern2;
+    uniform sampler2D u_Mask;
+    uniform float u_Ratio;
+    varying vec2 v_Pin;
+    void main() {
+      vec4 o = texture2D(u_Sampler, v_Pin);
+      vec4 p1 = texture2D(u_Pattern1, v_Pin);
+      vec4 p2 = texture2D(u_Pattern2, v_Pin);
+      vec4 m = texture2D(u_Mask, v_Pin);
+      vec4 p3 = vec4(1, 1, 1, 1);
+      if (m.x > 0.5) {
+        p3 = mix(p1, p2, u_Ratio);
+      }
+      gl_FragColor = p3 * o;
+    }
+  </script>
+  <script type='module' >
+    import Poly from './poly.js'
+    import Track from '../jsm/track.js'
+    import { initShader, imgPromise } from '../jsm/utils.js'
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const vsSource = document.getElementById('vertexShader').innerText
+    const fsSource = document.getElementById('fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+  
+    initShader(gl, vsSource, fsSource)
+    gl.clearColor(0.0, 0.0, 0.0, 1.0)
+
+    let n = 0
+    let track = null
+    const length = 5
+    const obj = { ratio: 0 }
+
+    // 数据源（位置数据 + 颜色数据）
+    const source = new Float32Array([
+      -0.4, 0.8,   0, 1,
+      -0.4, -0.8,  0, 0,
+      0.4, 0.8,    1, 1,
+      0.4, -0.8,   1, 0,
+    ])
+
+    const rect = new Poly({
+      gl,
+      source,
+      type: 'TRIANGLE_STRIP',
+      uniforms: {
+        u_Ratio: {
+          type: 'uniform1f',
+          value: obj.ratio
+        }
+      },
+      attributes: {
+        a_Position: {
+          size: 2,
+          index: 0
+        },
+        a_Pin: {
+          size: 2,
+          index: 2
+        }
+      }
+    })
+
+    const originImage = new Image()
+    originImage.src = './dress.jpg'
+    const maskImage = new Image()
+    maskImage.src = './mask-dress.jpg'
+
+    Promise.all([
+      imgPromise(originImage),
+      imgPromise(maskImage)
+    ]).then(() => {
+      loadImage()
+    })
+
+
+    function loadImage () {
+      n++
+      const i1 = n % length
+      const i2 = (n + 1) % length
+
+      const patternImage1 = new Image()
+      patternImage1.src = `./pattern${i1}.jpg`
+      const patternImage2 = new Image()
+      patternImage2.src = `./pattern${i2}.jpg`
+
+      Promise.all([
+        imgPromise(patternImage1),
+        imgPromise(patternImage2),
+      ]).then(() => {
+        changeImage(patternImage1, patternImage2)
+        ani()
+      })
+    }
+
+    function changeImage (...img) {
+      obj.ratio = 0
+
+      rect.maps = {
+        u_Sampler: { image: originImage },
+        u_Mask: { image: maskImage },
+        u_Pattern1: { image: img[0] },
+        u_Pattern2: { image: img[1] }
+      }
+      rect.updateMaps()
+
+      track = new Track(obj)
+      track.start = new Date()
+      track.timeLen = 1500
+      track.onEnd = loadImage
+      track.keyMap = new Map([
+        [
+          'ratio',
+          [
+            [0, 0],
+            [700, 1]
+          ]
+        ]
+      ])
+    }
+
+    /* 动画 */
+    function ani() {
+      track.update(new Date())
+      rect.uniforms.u_Ratio.value = obj.ratio;
+      rect.updateUniform()
+      render()
+      requestAnimationFrame(ani)
+    }
+
+    //渲染
+    function render() {
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      rect.draw()
+    }
+  </script>
+</body>
+</html>
