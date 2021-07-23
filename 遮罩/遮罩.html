@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>遮罩</title>
+    <style>
+        img{
+            position: absolute;
+        }
+        .img2{
+            -webkit-mask-image: url("./images/3.png");
+            -webkit-mask-size:100%;
+            animation:img2 1s linear infinite;
+        }
+        @keyframes img2{
+            0%{-webkit-mask-position-y: -300px}
+            100%{-webkit-mask-position-y: 150px}
+        }
+    </style>
+</head>
+<body>
+<img src="./images/1.png">
+<img class="img2" src="./images/2.png">
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三点渐变</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #canvas {
+      background-color: antiquewhite;
+    }
+  </style>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <!-- 顶点着色器 -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+    }
+  </script>
+  <!-- 片元着色器 -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    vec2 p1 = vec2(200, 200);
+    vec2 p2 = vec2(800, 400);
+    vec2 p3 = vec2(400, 800);
+
+    vec2 v31 = p1 - p3;
+    vec2 v32 = p2 - p3;
+    vec2 v12 = p2 - p1;
+
+    vec4 c1 = vec4(1, 0, 0, 1);
+    vec4 c2 = vec4(0, 1, 0, 1);
+    vec4 c3 = vec4(0, 0, 1, 1);
+
+    vec4 c12 = c2 - c1;
+    
+    // 一圆的弧度 360° = π * 2 单位圆的周长
+    float pi2 = radians(360.0);
+
+    float getAngle (vec2 v) {
+      float ang = atan(v.y, v.x);
+
+      if (ang < 0.0) {
+        ang += pi2;
+      }
+
+      return ang;
+    }
+
+
+    void main() {
+      float ang31 = getAngle(v31);
+      float ang32 = getAngle(v32);
+      vec2 v3f = gl_FragCoord.xy - p3;
+      float ang3f = getAngle(v3f);
+
+      vec2 v1f = gl_FragCoord.xy - p1;
+      float z = cross(vec3(v1f, 0.0), vec3(v12, 0.0)).z;
+
+      vec4 color = vec4(0);
+      if (ang3f >= ang31 && ang3f <= ang32 && z < 0.0) {
+        float angRatio = (ang3f - ang31) / (ang32 - ang31);
+
+        vec2 p4 = p1 + v12 * angRatio;
+        vec4 c4 = c1 + c12 * angRatio;
+
+        float lenE = distance(p4, p3);
+        float lenF = length(v3f);
+        float lenRatio = lenF / lenE;
+
+        color = c3 + (c4 - c3) * lenRatio;
+      }
+
+      gl_FragColor = color;
+    }
+  </script>
+  <script type='module' >
+    import { initShader, parseColorStops } from '../jsm/utils.js'
+    import Poly from './poly.js'
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    // 获取着色器文本
+    const vsSource = document.querySelector('#vertexShader').innerText
+    const fsSource = document.querySelector('#fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    // 初始化着色器
+    // 功能：解析着色器文本，整合到程序对象里，关联webgl上下文对象，实现两种语言的相互通信
+    initShader(gl, vsSource, fsSource)
+
+    // 声明颜色 rgba 每个值的取值范围为 [0, 1]
+    gl.clearColor(0, 0, 0, 1)
+
+    const source = new Float32Array([
+      -1, 1,
+      -1, -1,
+      1,  1,
+      1,  -1
+    ])
+    const colorStops = [
+      {
+        color: [123, 0, 123, 255],
+        stop: 0
+      },
+      {
+        color: [255, 0, 0, 255],
+        stop: 0.2
+      },
+      {
+        color: [255, 255, 0, 255],
+        stop: 0.4
+      },
+      {
+        color: [0, 255, 0, 255],
+        stop: 0.6
+      },
+      {
+        color: [0, 0, 200, 255],
+        stop: 0.8
+      },
+      {
+        color: [123, 0, 123, 255],
+        stop: 1
+      }
+    ]
+
+    const rect = new Poly({
+      gl,
+      source,
+      type: 'TRIANGLE_STRIP',
+      attributes: {
+        a_Position: {
+          size: 2,
+          index: 0
+        }
+      },
+      uniforms: {
+      }
+    })
+
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    rect.draw()
+  </script>
+</body>
+</html>
