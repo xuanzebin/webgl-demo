@@ -6,7 +6,7 @@ const defaultAttr = () => ({
   elementBytes: 4,
   categorySize: 0,
   attributes: {},
-  uniform: {}
+  uniforms: {}
 })
 
 export default class Poly {
