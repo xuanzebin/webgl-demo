@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>放射旋转</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #canvas {
+      background-color: antiquewhite;
+    }
+  </style>
+</head>
+<body>
+  <canvas id='canvas'></canvas>
+  <!-- 顶点着色器 -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    void main() {
+      gl_Position = a_Position;
+    }
+  </script>
+  <!-- 片元着色器 -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform float u_Stamp;
+    uniform vec2 u_CanvasSize;
+
+    vec2 center = u_CanvasSize / 2.0;
+    float pi2 = radians(360.0);
+
+    float u_Ang1 = u_Stamp * 0.0002;
+    float s1 = sin(u_Ang1);
+    float c1 = cos(u_Ang1);
+    mat2 modelMatrix1 = mat2(
+      c1,  s1,
+      -s1, c1
+    );
+
+    float u_Ang2 = u_Stamp * 0.0008;
+    float s2 = sin(u_Ang2);
+    float c2 = cos(u_Ang2);
+    mat2 modelMatrix2 = mat2(
+      c2,  s1,
+      -s2, c2
+    );
+
+    float rand(vec2 fragcoord) {
+      vec2 a = vec2(0.1234, 0.5678);
+      float value = dot(a, fragcoord);
+      return fract(sin(value) * 10000.0);
+    }
+
+    // pole 极点
+    float getBright(vec2 pole) {
+      pole = center + modelMatrix2 * (pole - center);
+      
+      vec2 p = modelMatrix1 * (gl_FragCoord.xy - pole);
+      float ang = atan(p.y, p.x);
+      float x = ang * 16.0;
+      vec2 v = vec2(int(x), 0);
+      return rand(v);
+    }
+    
+
+    void main() {
+      vec2 min = u_CanvasSize * 0.35;
+      vec2 max = u_CanvasSize * 0.65;
+      float bright1 = getBright(min);
+      float bright2 = getBright(max);
+
+      float f = 0.0;
+      float sum = bright1 + bright2;
+      if (sum > 1.0) {
+        f = bright1 * bright2;
+      } else {
+        f = sum;
+      }
+
+      gl_FragColor = vec4(f, f, f, 1);
+    }
+  </script>
+  <script type='module' >
+    import { initShader } from '../jsm/utils.js'
+    import Poly from './poly.js'
+    const canvas = document.querySelector('#canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    // 获取着色器文本
+    const vsSource = document.querySelector('#vertexShader').innerText
+    const fsSource = document.querySelector('#fragmentShader').innerText
+    const gl = canvas.getContext('webgl')
+
+    // 初始化着色器
+    // 功能：解析着色器文本，整合到程序对象里，关联webgl上下文对象，实现两种语言的相互通信
+    initShader(gl, vsSource, fsSource)
+
+    // 声明颜色 rgba 每个值的取值范围为 [0, 1]
+    gl.clearColor(0, 0, 0, 1)
+
+    const source = new Float32Array([
+      -1, 1,
+      -1, -1,
+      1,  1,
+      1,  -1
+    ])
+
+    const rect = new Poly({
+      gl,
+      source,
+      type: 'TRIANGLE_STRIP',
+      attributes: {
+        a_Position: {
+          size: 2,
+          index: 0
+        }
+      },
+      uniforms: {
+        u_CanvasSize: {
+          type: 'uniform2fv',
+          value: [canvas.width, canvas.height]
+        },
+        u_Stamp: {
+          type: 'uniform1f',
+          value: 0
+        }
+      }
+    })
+
+
+    !(function ani(stamp = 0) {
+      rect.uniforms.u_Stamp.value = stamp
+      rect.updateUniform()
+
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      rect.draw()
+
+      requestAnimationFrame(ani)
+    })()
+  </script>
+</body>
+</html>

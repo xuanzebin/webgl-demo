@@ -6,7 +6,8 @@ const defaultAttr = () => ({
   elementBytes: 4,
   categorySize: 0,
   attributes: {},
-  uniforms: {}
+  uniforms: {},
+  maps: {}
 })
 
 export default class Poly {
@@ -34,6 +35,66 @@ export default class Poly {
     this.categorySize = categorySize
     this.categoryBytes = categorySize * elementBytes
     this.sourceSize = source.length / categorySize
+  }
+
+  updateMaps () {
+    const { gl, maps } = this
+
+    Object.entries(maps).forEach(([key, val], index) => {
+      const {
+        format = gl.RGB,
+        image,
+        wrapS,
+        wrapT,
+        magFilter,
+        minFilter
+      } = val
+
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1)
+      gl.activeTexture(gl[`TEXTURE${index}`])
+      const texture = gl.createTexture()
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        format,
+        format,
+        gl.UNSIGNED_BYTE,
+        image
+      )
+
+      wrapS&&gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_WRAP_S,
+        wrapS
+      )
+
+      wrapT&&gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_WRAP_T,
+        wrapT
+      )
+
+      magFilter&&gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MAG_FILTER,
+        magFilter
+      )
+
+      if (!minFilter || minFilter > 9729) {
+        gl.generateMipmap(gl.TEXTURE_2D)
+      }
+
+      minFilter&&gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MIN_FILTER,
+        minFilter
+      )
+
+      const u = gl.getUniformLocation(gl.program, key)
+      gl.uniform1i(u, index)
+    }) 
   }
 
   updateAttribute () {
